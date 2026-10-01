@@ -1,0 +1,133 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Grid Splitter Pro - 自選格數版</title>
+    <!-- Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;800&display=swap" rel="stylesheet">
+
+    <!-- Libraries for ZIP download -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/FileSaver.js/2.0.5/FileSaver.min.js"></script>
+
+    <!-- 共用舊版視覺，外加自選格數樣式 -->
+    <link rel="stylesheet" href="style.css">
+    <link rel="stylesheet" href="custom.css">
+</head>
+<body>
+    <div class="background">
+        <div class="blob blob-1"></div>
+        <div class="blob blob-2"></div>
+    </div>
+
+    <div class="container">
+        <header>
+            <a href="https://www.patreon.com/wfhlifelab" target="_blank" rel="noopener noreferrer" class="logo-link">
+                <img src="jelena_logo.jpg" alt="Jelena 耶萊娜" class="site-logo">
+            </a>
+            <h1>Grid Splitter <span class="highlight">Custom</span></h1>
+            <p>自選任意宮格數，上傳後即時格線預覽，對齊了再切，無損保留原始最高畫質。</p>
+        </header>
+
+        <main>
+            <!-- Drop Zone -->
+            <div id="drop-zone" class="drop-zone glass-panel">
+                <div class="drop-content">
+                    <svg class="upload-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                        <polyline points="17 8 12 3 7 8"></polyline>
+                        <line x1="12" y1="3" x2="12" y2="15"></line>
+                    </svg>
+                    <h2>將圖片拖曳至此</h2>
+                    <p>或點擊選擇電腦中的圖片檔案</p>
+                    <input type="file" id="file-input" accept="image/*" hidden>
+                    <button class="btn-primary" onclick="document.getElementById('file-input').click()">瀏覽檔案</button>
+                </div>
+            </div>
+
+            <!-- Setup Panel (上傳後出現：預覽 + 自選格數) -->
+            <div id="setup" class="setup-panel glass-panel hidden">
+                <div class="setup-grid">
+                    <!-- 左：即時格線預覽 -->
+                    <div class="preview-wrap" id="preview-wrap">
+                        <img id="preview-img" src="" alt="預覽">
+                        <div class="grid-overlay" id="grid-overlay"></div>
+                    </div>
+
+                    <!-- 右：控制 -->
+                    <div class="controls">
+                        <h3>設定切割格數</h3>
+                        <p class="hint">先看左邊格線有沒有對齊縫隙，沒對齊就調欄/列數字。</p>
+
+                        <div class="preset-row" id="preset-row">
+                            <button class="chip" data-cols="2" data-rows="2">2×2（4格）</button>
+                            <button class="chip" data-cols="4" data-rows="2">4×2（8格 橫）</button>
+                            <button class="chip" data-cols="4" data-rows="3">4×3（12格 橫）</button>
+                            <button class="chip" data-cols="3" data-rows="4">3×4（12格 直）</button>
+                            <button class="chip" data-cols="4" data-rows="4">4×4（16格）</button>
+                            <button class="chip" data-cols="3" data-rows="3">3×3（9格）</button>
+                            <button class="chip" data-cols="2" data-rows="3">2×3（6格）</button>
+                        </div>
+
+                        <div class="stepper-row">
+                            <div class="stepper">
+                                <label>欄數（直切，左右）</label>
+                                <div class="stepper-controls">
+                                    <button type="button" data-target="cols" data-delta="-1">−</button>
+                                    <input type="number" id="cols-input" min="1" max="20" value="2">
+                                    <button type="button" data-target="cols" data-delta="1">+</button>
+                                </div>
+                            </div>
+                            <div class="stepper">
+                                <label>列數（橫切，上下）</label>
+                                <div class="stepper-controls">
+                                    <button type="button" data-target="rows" data-delta="-1">−</button>
+                                    <input type="number" id="rows-input" min="1" max="20" value="2">
+                                    <button type="button" data-target="rows" data-delta="1">+</button>
+                                </div>
+                            </div>
+                        </div>
+
+                        <p class="summary-line" id="summary-line"></p>
+
+                        <div class="action-row">
+                            <button id="reselect-btn" class="btn-secondary">換一張</button>
+                            <button id="split-btn" class="btn-primary">開始切割</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Loader -->
+            <div id="loader" class="loader-container hidden">
+                <div class="spinner"></div>
+                <p>極速無損處理中...</p>
+            </div>
+
+            <!-- Results Area -->
+            <div id="results" class="results-area hidden">
+                <div class="results-header">
+                    <h3>處理結果 <span id="resolution-info" class="badge"></span></h3>
+                    <div class="actions">
+                        <button id="back-btn" class="btn-secondary">調整格數</button>
+                        <button id="reset-btn" class="btn-secondary">處理新圖片</button>
+                        <button id="download-all-btn" class="btn-primary">
+                            <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
+                            一鍵下載 ZIP
+                        </button>
+                    </div>
+                </div>
+
+                <div class="split-grid" id="split-grid">
+                    <!-- Images will be injected here via JS -->
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <script src="custom.js"></script>
+</body>
+</html>
